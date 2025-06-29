@@ -121,7 +121,6 @@ if uploaded_file is not None:
         df_filtrado_fecha = df[df[FECHA_COLUMN].dt.date == fecha_dt_seleccionada.date()]
 
         # --- Renderizado del Dashboard ---
-        # CORRECCIÓN DEL SYNTAX ERROR: Se eliminó el espacio extra entre fecha_ y dt_seleccionada.
         st.header(f"Análisis para el {fecha_dt_seleccionada.strftime('%d-%m-%Y')}")
 
         if not df_filtrado_fecha.empty:
@@ -181,22 +180,13 @@ if uploaded_file is not None:
             else:
                 st.warning(f"No se encontró la columna '{DESTINO_COLUMN}'. El gráfico por destino no se mostrará.")
 
-            # 3. Gráfico por Cantidad de Guías Emitidas por Producto
+            # 3. Gráfico por Cantidad de Guías Emitidas por Producto (AHORA OCULTO)
+            # El cálculo se mantiene por si es necesario para insights, pero el gráfico no se muestra.
             if GUIA_COLUMN_IDENTIFIER and GUIA_COLUMN_IDENTIFIER in df_filtrado_fecha.columns:
                 guias_por_producto = df_filtrado_fecha.groupby(PRODUCTO_COLUMN)[GUIA_COLUMN_IDENTIFIER].nunique().reset_index(name='CANTIDAD_GUIAS')
             else: # Contar filas si no hay columna específica para guías
                 guias_por_producto = df_filtrado_fecha.groupby(PRODUCTO_COLUMN).size().reset_index(name='CANTIDAD_GUIAS')
 
-            # Este gráfico individual se oculta porque ya está en el combinado
-            # if not guias_por_producto.empty:
-            #     fig_guias_producto = px.bar(guias_por_producto,
-            #                        x=PRODUCTO_COLUMN, y='CANTIDAD_GUIAS',
-            #                        title=f'Cantidad de Guías por Producto - {fecha_dt_seleccionada.strftime("%d-%m-%Y")}',
-            #                        labels={PRODUCTO_COLUMN: 'Producto', 'CANTIDAD_GUIAS': 'Nro. de Guías'},
-            #                        color_discrete_sequence=px.colors.qualitative.G10)
-            #     st.plotly_chart(fig_guias_producto, use_container_width=True)
-            # else:
-            #     st.warning("No hay datos de guías por producto para mostrar el gráfico.")
 
             # 4. Gráfico por Tonelaje de Cada Producto
             tonelaje_por_producto_detail = df_filtrado_fecha.groupby(PRODUCTO_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
