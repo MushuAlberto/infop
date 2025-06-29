@@ -135,7 +135,7 @@ if uploaded_file is not None:
 
             # --- Agrupación de Datos para Gráficos y Insights ---
 
-            # Inicializar DataFrames que podrían no tener datos
+            # Inicializar DataFrames que podrían no tener datos o ser calculados condicionalmente
             tonelaje_por_empresa = pd.DataFrame()
             guias_por_empresa = pd.DataFrame()
             empresa_data = pd.DataFrame() # Para el gráfico combinado de empresa
@@ -184,7 +184,7 @@ if uploaded_file is not None:
                 st.warning(f"No se encontró la columna '{DESTINO_COLUMN}'. El gráfico por destino no se mostrará.")
 
             # 3. Gráfico por Cantidad de Guías Emitidas por Producto
-            # Calculamos guías_por_producto aquí para evitar el NameError
+            # Aseguramos que guias_por_producto se inicialice siempre
             if GUIA_COLUMN_IDENTIFIER and GUIA_COLUMN_IDENTIFIER in df_filtrado_fecha.columns:
                 guias_por_producto = df_filtrado_fecha.groupby(PRODUCTO_COLUMN)[GUIA_COLUMN_IDENTIFIER].nunique().reset_index(name='CANTIDAD_GUIAS')
             else: # Contar filas si no hay columna específica para guías
@@ -236,7 +236,6 @@ if uploaded_file is not None:
 
             # --- Gráfico Combinado: Tonelaje y Guías por Empresa ---
             if not empresa_data.empty:
-                # Creamos la figura base de barras para el tonelaje
                 fig_empresa_combinado = px.bar(empresa_data,
                                                x=EMPRESA_COLUMN,
                                                y=VOLUME_COLUMN,
@@ -250,10 +249,9 @@ if uploaded_file is not None:
                                                       y=empresa_data['CANTIDAD_GUIAS'], 
                                                       mode='lines+markers', 
                                                       name='Guías', 
-                                                      yaxis='y2', # Usar un eje Y secundario para las guías
+                                                      yaxis='y2', 
                                                       line=dict(color='firebrick', width=2, dash='dash'))
                     
-                    # Configuramos los dos ejes Y
                     fig_empresa_combinado.update_layout(
                         yaxis=dict(title='Tonelaje (toneladas)', color='blue'),
                         yaxis2=dict(title='Cantidad de Guías', overlaying='y', side='right', color='red'),
@@ -262,7 +260,7 @@ if uploaded_file is not None:
                     st.plotly_chart(fig_empresa_combinado, use_container_width=True)
                 else:
                     st.warning("La columna 'CANTIDAD_GUIAS' no se pudo generar correctamente. El gráfico combinado de empresa no se mostrará.")
-            elif EMPRESA_COLUMN in df_filtrado_fecha.columns: # Si la columna existe pero no hay datos para esa fecha
+            elif EMPRESA_COLUMN in df_filtrado_fecha.columns: 
                  st.warning("No hay datos de tonelaje o guías por empresa para mostrar el gráfico.")
 
 
