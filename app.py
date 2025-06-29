@@ -16,7 +16,9 @@ st.markdown("### Análisis Detallado de Operaciones")
 
 # --- Configuración de Nombres de Columnas (¡AJUSTA ESTAS SI TUS NOMBRES SON DIFERENTES!) ---
 VOLUME_COLUMN = 'TONELAJE'           # Columna que contiene el volumen/tonelaje.
-EMPRESA_COLUMN = 'L'                # Columna que contiene los nombres de las empresas de transporte.
+# !!! IMPORTANTE: Basado en la imagen del error y el OCR previo, asumimos que la columna de empresa es 'EMPRESA DE TRANSPORTE'.
+# SI EN TU ARCHIVO REALMENTE SE LLAMA 'L' O ALGO DIFERENTE, POR FAVOR AJUSTA ESTA LÍNEA.
+EMPRESA_COLUMN = 'EMPRESA DE TRANSPORTE' 
 FECHA_COLUMN = 'FECHA'              # Columna que contiene las fechas.
 PRODUCTO_COLUMN = 'PRODUCTO'        # Columna que contiene los nombres de los productos.
 DESTINO_COLUMN = 'DESTINO'          # Columna que contiene los destinos.
@@ -24,11 +26,9 @@ DESTINO_COLUMN = 'DESTINO'          # Columna que contiene los destinos.
 # se contarán las filas por producto. Déjala como None si no existe.
 GUIA_COLUMN_IDENTIFIER = None       
 # Lista de columnas que indican la presencia de una regulación para un producto.
-# Asumimos que si la celda tiene un valor (no está vacía), cuenta como una regulación.
 REGULACION_COLUMNS_TO_COUNT = ['REGULACION 1', 'REGULACION 2', 'REGULACION 3'] 
 
 # --- Mapeo de Nombres de Empresas ---
-# Aquí se definen las equivalencias para normalizar los nombres de las empresas.
 empresa_mapping = {
     "JORQUERA TRANSPORTE S. A.": "JORQUERA TRANSPORTE S. A.",
     "JORQUERA TRANSPORTE S A": "JORQUERA TRANSPORTE S. A.",
@@ -66,7 +66,7 @@ if uploaded_file is not None:
         # --- Preprocesamiento de Datos ---
         # 1. Convertir FECHA
         if FECHA_COLUMN not in df.columns:
-            st.error(f"Error: No se encontró la columna '{FECHA_COLUMN}'. Por favor, asegúrate de que exista.")
+            st.error(f"Error: No se encontró la columna '{FECHA_COLUMN}'. Por favor, asegúrate de que exista y se llame exactamente '{FECHA_COLUMN}'.")
             st.stop()
         try:
             df[FECHA_COLUMN] = pd.to_datetime(df[FECHA_COLUMN], format='%d-%m-%Y', errors='coerce')
@@ -90,6 +90,7 @@ if uploaded_file is not None:
             st.error(f"Error: No se encontró la columna '{PRODUCTO_COLUMN}'.")
             st.stop()
         
+        # Validar Columna de Empresa - ¡AJUSTADA A 'EMPRESA DE TRANSPORTE'!
         if EMPRESA_COLUMN not in df.columns:
             st.error(f"Error: No se encontró la columna '{EMPRESA_COLUMN}'. Por favor, verifica que la columna para las empresas se llame exactamente '{EMPRESA_COLUMN}'.")
             st.stop()
@@ -155,18 +156,15 @@ if uploaded_file is not None:
             tonelaje_por_producto_detail = df_filtrado_fecha.groupby(PRODUCTO_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
 
             # 5. Gráfico por Cantidad de Regulaciones que tenga cada Producto
-            # Lógica: Sumar 1 por cada columna de regulación que tenga un valor no nulo para ese producto.
             if all(col in df_filtrado_fecha.columns for col in REGULACION_COLUMNS_TO_COUNT):
                 df_temp_regulaciones = df_filtrado_fecha.copy()
                 for col in REGULACION_COLUMNS_TO_COUNT:
-                    # Marcar si la columna tiene valor (1) o está vacía (0)
                     df_temp_regulaciones[f'tiene_{col}'] = df_temp_regulaciones[col].apply(lambda x: 1 if pd.notna(x) else 0)
 
                 columnas_a_sumar = [f'tiene_{col}' for col in REGULACION_COLUMNS_TO_COUNT]
-                # Agrupar por producto y sumar todas las columnas temporales para obtener el total de regulaciones por producto
                 regulaciones_por_producto = df_temp_regulaciones.groupby(PRODUCTO_COLUMN)[columnas_a_sumar].sum().sum(axis=1).reset_index(name='CANTIDAD_REGULACIONES')
             else:
-                regulaciones_por_producto = pd.DataFrame() # Inicializar vacío si no todas las columnas de regulación existen
+                regulaciones_por_producto = pd.DataFrame()
 
 
             # --- Insights Clave ---
