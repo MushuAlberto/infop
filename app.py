@@ -144,6 +144,8 @@ if uploaded_file is not None:
                 tonelaje_por_empresa = df_filtrado_fecha.groupby(EMPRESA_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
                 
                 # Cantidad de Guías por Empresa
+                # Si GUIA_COLUMN_IDENTIFIER está definido y la columna existe, la usamos.
+                # De lo contrario, contamos las filas (cada fila como una guía).
                 if GUIA_COLUMN_IDENTIFIER and GUIA_COLUMN_IDENTIFIER in df_filtrado_fecha.columns:
                     guias_por_empresa = df_filtrado_fecha.groupby(EMPRESA_COLUMN)[GUIA_COLUMN_IDENTIFIER].nunique().reset_index(name='CANTIDAD_GUIAS')
                 else: # Contar filas si no hay columna específica para guías
@@ -160,7 +162,7 @@ if uploaded_file is not None:
                     empresa_data = guias_por_empresa
                     empresa_data[VOLUME_COLUMN] = 0 # Añadir columna de tonelaje con 0
                 
-            # Si EMPRESA_COLUMN no está presente o empresa_data está vacía después de procesar,
+            # Si la columna EMPRESA_COLUMN no está presente o empresa_data está vacía,
             # los gráficos relacionados se omitirán o mostrarán advertencia.
 
 
@@ -199,7 +201,7 @@ if uploaded_file is not None:
             else:
                 st.warning("No hay datos de tonelaje por producto para mostrar el gráfico.")
 
-            # 5. Gráfico por Cantidad de Regulaciones que tenga cada Producto
+            # 5. Gráfico por Cantidad de Regulaciones por Producto
             if all(col in df_filtrado_fecha.columns for col in REGULACION_COLUMNS_TO_COUNT):
                 df_temp_regulaciones = df_filtrado_fecha.copy()
                 for col in REGULACION_COLUMNS_TO_COUNT:
