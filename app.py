@@ -231,7 +231,7 @@ if uploaded_file is not None:
 
 
             # --- Gráfico Combinado: Tonelaje y Guías por Producto ---
-            # Este es el nuevo gráfico combinado que solicitaste.
+            # Este es el gráfico combinado que solicitaste.
             if not tonelaje_por_producto_detail.empty and not guias_por_producto.empty:
                 # Aseguramos que ambos dataframes tengan las mismas columnas para el merge
                 # Si uno está vacío, lo creamos con las columnas necesarias y ceros.
@@ -240,7 +240,7 @@ if uploaded_file is not None:
                 
                 # Unir los datos de tonelaje y guías por producto
                 producto_data_combinado = pd.merge(tonelaje_por_producto_detail, guias_por_producto, on=PRODUCTO_COLUMN, how='left')
-                producto_data_combinado.fillna(0, inplace=True)
+                producto_data_combinado.fillna(0, inplace=True) # Rellenar NaN si alguna métrica falta
 
                 if not producto_data_combinado.empty:
                     fig_producto_combinado = px.bar(producto_data_combinado,
@@ -250,7 +250,7 @@ if uploaded_file is not None:
                                                     labels={PRODUCTO_COLUMN: 'Producto', VOLUME_COLUMN: 'Tonelaje (toneladas)'},
                                                     color_discrete_sequence=px.colors.qualitative.Pastel)
                     
-                    # Añadimos la línea para la cantidad de guías
+                    # Añadir la línea para la cantidad de guías
                     if 'CANTIDAD_GUIAS' in producto_data_combinado.columns:
                         fig_producto_combinado.add_scatter(x=producto_data_combinado[PRODUCTO_COLUMN], 
                                                           y=producto_data_combinado['CANTIDAD_GUIAS'], 
