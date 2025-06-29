@@ -154,7 +154,6 @@ if uploaded_file is not None:
                 else: # Contar filas si no hay columna específica para guías
                     guias_por_empresa = df_filtrado_fecha.groupby(EMPRESA_COLUMN).size().reset_index(name='CANTIDAD_GUIAS')
                 
-                # Unir las dos métricas por empresa
                 if not tonelaje_por_empresa.empty and not guias_por_empresa.empty:
                     empresa_data = pd.merge(tonelaje_por_empresa, guias_por_empresa, on=EMPRESA_COLUMN, how='left')
                     empresa_data.fillna(0, inplace=True)
@@ -243,6 +242,7 @@ if uploaded_file is not None:
                 producto_data_combinado.fillna(0, inplace=True) # Rellenar NaN si alguna métrica falta
 
                 if not producto_data_combinado.empty:
+                    # Creamos la figura base de barras para el tonelaje
                     fig_producto_combinado = px.bar(producto_data_combinado,
                                                     x=PRODUCTO_COLUMN,
                                                     y=VOLUME_COLUMN,
@@ -250,12 +250,13 @@ if uploaded_file is not None:
                                                     labels={PRODUCTO_COLUMN: 'Producto', VOLUME_COLUMN: 'Tonelaje (toneladas)'},
                                                     color_discrete_sequence=px.colors.qualitative.Pastel)
                     
+                    # Añadimos la línea para la cantidad de guías
                     if 'CANTIDAD_GUIAS' in producto_data_combinado.columns:
                         fig_producto_combinado.add_scatter(x=producto_data_combinado[PRODUCTO_COLUMN], 
                                                           y=producto_data_combinado['CANTIDAD_GUIAS'], 
                                                           mode='lines+markers', 
                                                           name='Guías', 
-                                                          yaxis='y2', 
+                                                          yaxis='y2', # Usar un eje Y secundario para las guías
                                                           line=dict(color='firebrick', width=2, dash='dash'))
                         
                         fig_producto_combinado.update_layout(
@@ -268,11 +269,13 @@ if uploaded_file is not None:
                         st.warning("La columna 'CANTIDAD_GUIAS' no se pudo generar correctamente. El gráfico combinado de producto no se mostrará.")
                 else:
                     st.warning("No hay datos combinados para mostrar el gráfico de producto.")
+            # También añadimos una advertencia si la columna de producto existe pero no hay datos para calcular los gráficos
             elif PRODUCTO_COLUMN in df_filtrado_fecha.columns:
                  st.warning("No hay datos de tonelaje o guías por producto para mostrar el gráfico.")
 
 
             # --- Gráfico Combinado: Tonelaje y Guías por Empresa ---
+            # Este gráfico ya existía, y debería funcionar con las inicializaciones correctas.
             if not empresa_data.empty:
                 fig_empresa_combinado = px.bar(empresa_data,
                                                x=EMPRESA_COLUMN,
