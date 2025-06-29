@@ -14,14 +14,14 @@ st.set_page_config(
 st.title("📊 Dashboard Ejecutivo de Operaciones")
 st.markdown("### Análisis Detallado de Operaciones")
 
-# --- Configuración de Nombres de Columnas (AJUSTADO SEGÚN TU INFORMACIÓN) ---
+# --- Configuración de Nombres de Columnas (¡AJUSTA ESTAS SI TUS NOMBRES SON DIFERENTES!) ---
 VOLUME_COLUMN = 'TONELAJE'           # Columna que contiene el volumen/tonelaje.
 EMPRESA_COLUMN = 'EMPRESA DE TRANSPORTE' # Columna que contiene los nombres de las empresas de transporte.
 FECHA_COLUMN = 'FECHA'              # Columna que contiene las fechas.
 PRODUCTO_COLUMN = 'PRODUCTO'        # Columna que contiene los nombres de los productos.
 DESTINO_COLUMN = 'DESTINO'          # Columna que contiene los destinos.
 # Columna para identificar guías únicas. Si no hay una columna específica,
-# se contarán las filas por producto. Como confirmaste que solo se deben contar filas, se mantiene como None.
+# se contarán las filas por producto. Si es así, déjala como None.
 GUIA_COLUMN_IDENTIFIER = None       
 # Lista de columnas que indican la presencia de una regulación para un producto.
 REGULACION_COLUMNS_TO_COUNT = ['REGULACION 1', 'REGULACION 2', 'REGULACION 3'] 
@@ -67,13 +67,12 @@ if uploaded_file is not None:
             st.error(f"Error: No se encontró la columna '{FECHA_COLUMN}'. Por favor, asegúrate de que exista y se llame exactamente '{FECHA_COLUMN}'.")
             st.stop()
         try:
-            # Formato de fecha confirmado: DD-MM-YYYY
             df[FECHA_COLUMN] = pd.to_datetime(df[FECHA_COLUMN], format='%d-%m-%Y', errors='coerce')
         except ValueError:
             try:
-                df[FECHA_COLUMN] = pd.to_datetime(df[FECHA_COLUMN], errors='coerce') # Intenta parseo automático como fallback
+                df[FECHA_COLUMN] = pd.to_datetime(df[FECHA_COLUMN], errors='coerce') # Intenta parseo automático
             except Exception as e:
-                st.error(f"Error al convertir la columna '{FECHA_COLUMN}'. Asegúrate de que tenga un formato de fecha reconocible (ej. DD-MM-YYYY). Detalle: {e}")
+                st.error(f"Error al convertir la columna '{FECHA_COLUMN}'. Asegúrate de que tenga un formato de fecha reconocible. Detalle: {e}")
                 st.stop()
         df.dropna(subset=[FECHA_COLUMN], inplace=True)
 
@@ -122,7 +121,8 @@ if uploaded_file is not None:
         df_filtrado_fecha = df[df[FECHA_COLUMN].dt.date == fecha_dt_seleccionada.date()]
 
         # --- Renderizado del Dashboard ---
-        st.header(f"Análisis para el {fecha_ dt_seleccionada.strftime('%d-%m-%Y')}")
+        # CORRECCIÓN DEL SYNTAX ERROR: Cambiado el formato de la fecha para evitar conflicto de comillas
+        st.header(f"Análisis para el {fecha_dt_seleccionada.strftime('%d-%m-%Y')}")
 
         if not df_filtrado_fecha.empty:
             tonelaje_total_dia = df_filtrado_fecha[VOLUME_COLUMN].sum()
@@ -243,7 +243,7 @@ if uploaded_file is not None:
                 producto_data_combinado.fillna(0, inplace=True) # Rellenar NaN si alguna métrica falta
 
                 if not producto_data_combinado.empty:
-                    # Creamos el gráfico de barras para el tonelaje
+                    # Creamos la figura base de barras para el tonelaje
                     fig_producto_combinado = px.bar(producto_data_combinado,
                                                     x=PRODUCTO_COLUMN,
                                                     y=VOLUME_COLUMN,
@@ -260,7 +260,6 @@ if uploaded_file is not None:
                                                           yaxis='y2', # Usar un eje Y secundario para las guías
                                                           line=dict(color='firebrick', width=2, dash='dash'))
                         
-                        # Configuramos los dos ejes Y
                         fig_producto_combinado.update_layout(
                             yaxis=dict(title='Tonelaje (toneladas)', color='blue'),
                             yaxis2=dict(title='Cantidad de Guías', overlaying='y', side='right', color='red'),
