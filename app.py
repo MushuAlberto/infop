@@ -22,7 +22,6 @@ PRODUCTO_COLUMN = 'PRODUCTO'        # Columna que contiene los nombres de los pr
 DESTINO_COLUMN = 'DESTINO'          # Columna que contiene los destinos.
 # Columna para identificar guías únicas. Si no hay una columna específica,
 # se contarán las filas por producto. Si es así, déjala como None.
-# SI TIENES UNA COLUMNA QUE IDENTIFICA CADA GUIA, DAME EL NOMBRE EXACTO.
 GUIA_COLUMN_IDENTIFIER = None       
 # Lista de columnas que indican la presencia de una regulación para un producto.
 REGULACION_COLUMNS_TO_COUNT = ['REGULACION 1', 'REGULACION 2', 'REGULACION 3'] 
@@ -144,8 +143,6 @@ if uploaded_file is not None:
                 tonelaje_por_empresa = df_filtrado_fecha.groupby(EMPRESA_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
                 
                 # Cantidad de Guías por Empresa
-                # Si GUIA_COLUMN_IDENTIFIER está definido y la columna existe, la usamos.
-                # De lo contrario, contamos las filas (cada fila como una guía).
                 if GUIA_COLUMN_IDENTIFIER and GUIA_COLUMN_IDENTIFIER in df_filtrado_fecha.columns:
                     guias_por_empresa = df_filtrado_fecha.groupby(EMPRESA_COLUMN)[GUIA_COLUMN_IDENTIFIER].nunique().reset_index(name='CANTIDAD_GUIAS')
                 else: # Contar filas si no hay columna específica para guías
@@ -162,7 +159,7 @@ if uploaded_file is not None:
                     empresa_data = guias_por_empresa
                     empresa_data[VOLUME_COLUMN] = 0 # Añadir columna de tonelaje con 0
                 
-            # Si la columna EMPRESA_COLUMN no está presente o empresa_data está vacía,
+            # Si la columna EMPRESA_COLUMN no está presente o empresa_data está vacía después de procesar,
             # los gráficos relacionados se omitirán o mostrarán advertencia.
 
 
