@@ -16,13 +16,13 @@ st.markdown("### Análisis Detallado de Operaciones")
 
 # --- Configuración de Nombres de Columnas (¡AJUSTA ESTAS SI TUS NOMBRES SON DIFERENTES!) ---
 VOLUME_COLUMN = 'TONELAJE'           # Columna que contiene el volumen/tonelaje.
-# !!! IMPORTANTE: Confirmado que la columna para las empresas es 'EMPRESA DE TRANSPORTE'.
-EMPRESA_COLUMN = 'EMPRESA DE TRANSPORTE' 
+EMPRESA_COLUMN = 'EMPRESA DE TRANSPORTE' # Columna que contiene los nombres de las empresas de transporte.
 FECHA_COLUMN = 'FECHA'              # Columna que contiene las fechas.
 PRODUCTO_COLUMN = 'PRODUCTO'        # Columna que contiene los nombres de los productos.
 DESTINO_COLUMN = 'DESTINO'          # Columna que contiene los destinos.
 # Columna para identificar guías únicas. Si no hay una columna específica,
-# se contarán las filas por producto. Déjala como None si no existe.
+# se contarán las filas por producto. Si es así, déjala como None.
+# SI TIENES UNA COLUMNA QUE IDENTIFICA CADA GUIA, DAME EL NOMBRE EXACTO.
 GUIA_COLUMN_IDENTIFIER = None       
 # Lista de columnas que indican la presencia de una regulación para un producto.
 REGULACION_COLUMNS_TO_COUNT = ['REGULACION 1', 'REGULACION 2', 'REGULACION 3'] 
@@ -89,7 +89,7 @@ if uploaded_file is not None:
             st.error(f"Error: No se encontró la columna '{PRODUCTO_COLUMN}'.")
             st.stop()
         
-        # Validar Columna de Empresa - ¡CONFIRMADO COMO 'EMPRESA DE TRANSPORTE'!
+        # Validar Columna de Empresa - Confirmada como 'EMPRESA DE TRANSPORTE'
         if EMPRESA_COLUMN not in df.columns:
             st.error(f"Error: No se encontró la columna '{EMPRESA_COLUMN}'. Por favor, verifica que la columna para las empresas se llame exactamente '{EMPRESA_COLUMN}'.")
             st.stop()
@@ -137,78 +137,35 @@ if uploaded_file is not None:
 
             # --- Agrupación de Datos para Gráficos y Insights ---
 
-            # 1. Gráfico por Empresa
-            tonelaje_por_empresa = None
-            if EMPRESA_COLUMN in df_filtrado_fecha.columns: # Doble chequeo por si acaso
+            # 1. Datos para Gráfico Combinado por Empresa (Tonelaje y Guías)
+            empresa_data = pd.DataFrame() # Inicializar vacío
+            if EMPRESA_COLUMN in df_filtrado_fecha.columns:
+                # Tonelaje por Empresa
                 tonelaje_por_empresa = df_filtrado_fecha.groupby(EMPRESA_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
-
-            # 2. Gráfico por Destino del Producto
-            tonelaje_por_destino = df_filtrado_fecha.groupby(DESTINO_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
-
-            # 3. Gráfico por Cantidad de Guías Emitidas por Producto
-            if GUIA_COLUMN_IDENTIFIER and GUIA_COLUMN_IDENTIFIER in df_filtrado_fecha.columns:
-                guias_por_producto = df_filtrado_fecha.groupby(PRODUCTO_COLUMN)[GUIA_COLUMN_IDENTIFIER].nunique().reset_index(name='CANTIDAD_GUIAS')
-            else: # Contar filas si no hay columna específica para guías
-                guias_por_producto = df_filtrado_fecha.groupby(PRODUCTO_COLUMN).size().reset_index(name='CANTIDAD_GUIAS')
-
-            # 4. Gráfico por Tonelaje de Cada Producto
-            tonelaje_por_producto_detail = df_filtrado_fecha.groupby(PRODUCTO_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
-
-            # 5. Gráfico por Cantidad de Regulaciones que tenga cada Producto
-            if all(col in df_filtrado_fecha.columns for col in REGULACION_COLUMNS_TO_COUNT):
-                df_temp_regulaciones = df_filtrado_fecha.copy()
-                for col in REGULACION_COLUMNS_TO_COUNT:
-                    df_temp_regulaciones[f'tiene_{col}'] = df_temp_regulaciones[col].apply(lambda x: 1 if pd.notna(x) else 0)
-
-                columnas_a_sumar = [f'tiene_{col}' for col in REGULACION_COLUMNS_TO_COUNT]
-                regulaciones_por_producto = df_temp_regulaciones.groupby(PRODUCTO_COLUMN)[columnas_a_sumar].sum().sum(axis=1).reset_index(name='CANTIDAD_REGULACIONES')
-            else:
-                regulaciones_por_producto = pd.DataFrame()
-
-
-            # --- Insights Clave ---
-            st.subheader("💡 Insights Clave")
-
-            # Insight 1: Producto con Mayor Tonelaje
-            if not tonelaje_por_producto_detail.empty:
-                producto_mas_tonelaje_detail = tonelaje_por_producto_detail.iloc[0]
-                mayor_tonelaje_prod_detail = producto_mas_tonelaje_detail[VOLUME_COLUMN]
-                porcentaje_del_total_detail = (mayor_tonelaje_prod_detail / tonelaje_total_dia) * 100 if tonelaje_total_dia > 0 else 0
-                st.markdown(f"- El producto con mayor volumen de tonelaje fue **'{producto_mas_tonelaje_detail[PRODUCTO_COLUMN]}'** con **{mayor_tonelaje_prod_detail:,.2f} toneladas**, representando el **{porcentaje_del_total_detail:.2f}%** del total diario.")
-            else:
-                st.markdown("- No hay datos de tonelaje por producto para esta fecha.")
-
-            # Insight 2: Producto con Más Guías Emitidas
-            if not guias_por_producto.empty:
-                producto_mas_guias = guias_por_producto.iloc[0]
-                st.markdown(f"- El producto con más guías emitidas fue **'{producto_mas_guias[PRODUCTO_COLUMN]}'** con **{producto_mas_guias['CANTIDAD_GUIAS']} guías**.")
-            else:
-                st.markdown("- No hay datos de guías por producto para esta fecha.")
                 
-            # Insight 3: Producto con Más Regulaciones
-            if not regulaciones_por_producto.empty and 'CANTIDAD_REGULACIONES' in regulaciones_por_producto.columns:
-                producto_mas_reg = regulaciones_por_producto.iloc[0]
-                st.markdown(f"- El producto con más regulaciones registradas fue **'{producto_mas_reg[PRODUCTO_COLUMN]}'** con **{producto_mas_reg['CANTIDAD_REGULACIONES']} regulaciones**.")
-            else:
-                st.markdown("- No hay datos suficientes para determinar el producto con más regulaciones o las columnas de regulación no existen/no tienen datos.")
+                # Cantidad de Guías por Empresa
+                if GUIA_COLUMN_IDENTIFIER and GUIA_COLUMN_IDENTIFIER in df_filtrado_fecha.columns:
+                    guias_por_empresa = df_filtrado_fecha.groupby(EMPRESA_COLUMN)[GUIA_COLUMN_IDENTIFIER].nunique().reset_index(name='CANTIDAD_GUIAS')
+                else: # Contar filas si no hay columna específica para guías
+                    guias_por_empresa = df_filtrado_fecha.groupby(EMPRESA_COLUMN).size().reset_index(name='CANTIDAD_GUIAS')
+                
+                # Unir las dos métricas por empresa
+                if not tonelaje_por_empresa.empty and not guias_por_empresa.empty:
+                    empresa_data = pd.merge(tonelaje_por_empresa, guias_por_empresa, on=EMPRESA_COLUMN, how='left')
+                    empresa_data.fillna(0, inplace=True) # Rellenar NaN si alguna métrica falta
+                elif not tonelaje_por_empresa.empty: # Si solo tenemos tonelaje
+                    empresa_data = tonelaje_por_empresa
+                    empresa_data['CANTIDAD_GUIAS'] = 0 # Añadir columna de guías con 0
+                elif not guias_por_empresa.empty: # Si solo tenemos guías
+                    empresa_data = guias_por_empresa
+                    empresa_data[VOLUME_COLUMN] = 0 # Añadir columna de tonelaje con 0
+                
+            # Si EMPRESA_COLUMN no está presente o empresa_data está vacía después de procesar,
+            # los gráficos relacionados se omitirán o mostrarán advertencia.
 
 
-            # --- Gráficos ---
-            st.subheader("📈 Visualizaciones")
-
-            # Gráfico 1: Por Empresa
-            if tonelaje_por_empresa is not None and not tonelaje_por_empresa.empty:
-                fig_empresa = px.bar(tonelaje_por_empresa,
-                                     x=EMPRESA_COLUMN, y=VOLUME_COLUMN,
-                                     title=f'Tonelaje por Empresa - {fecha_dt_seleccionada.strftime("%d-%m-%Y")}',
-                                     labels={EMPRESA_COLUMN: 'Empresa', VOLUME_COLUMN: 'Tonelaje (toneladas)'},
-                                     color_discrete_sequence=px.colors.qualitative.Vivid)
-                st.plotly_chart(fig_empresa, use_container_width=True)
-            elif EMPRESA_COLUMN in df_filtrado_fecha.columns:
-                 st.warning("No hay datos de tonelaje por empresa para mostrar el gráfico.")
-
-
-            # Gráfico 2: Por Destino del Producto
+            # 2. Gráfico por Destino del Producto (solo barras de tonelaje)
+            tonelaje_por_destino = df_filtrado_fecha.groupby(DESTINO_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
             if not tonelaje_por_destino.empty:
                 fig_destino = px.bar(tonelaje_por_destino,
                                      x=DESTINO_COLUMN, y=VOLUME_COLUMN,
@@ -219,7 +176,7 @@ if uploaded_file is not None:
             else:
                 st.warning("No hay datos de tonelaje por destino para mostrar el gráfico.")
 
-            # Gráfico 3: Cantidad de Guías Emitidas por Producto
+            # 3. Gráfico por Cantidad de Guías Emitidas por Producto
             if not guias_por_producto.empty:
                 fig_guias = px.bar(guias_por_producto,
                                    x=PRODUCTO_COLUMN, y='CANTIDAD_GUIAS',
@@ -230,7 +187,8 @@ if uploaded_file is not None:
             else:
                 st.warning("No hay datos de guías por producto para mostrar el gráfico.")
 
-            # Gráfico 4: Tonelaje de Cada Producto
+            # 4. Gráfico por Tonelaje de Cada Producto
+            tonelaje_por_producto_detail = df_filtrado_fecha.groupby(PRODUCTO_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
             if not tonelaje_por_producto_detail.empty:
                 fig_producto_tonelaje = px.bar(tonelaje_por_producto_detail,
                                                 x=PRODUCTO_COLUMN, y=VOLUME_COLUMN,
@@ -241,16 +199,26 @@ if uploaded_file is not None:
             else:
                 st.warning("No hay datos de tonelaje por producto para mostrar el gráfico.")
 
-            # Gráfico 5: Cantidad de Regulaciones por Producto
-            if not regulaciones_por_producto.empty and 'CANTIDAD_REGULACIONES' in regulaciones_por_producto.columns:
-                 fig_regulaciones = px.bar(regulaciones_por_producto,
-                                           x=PRODUCTO_COLUMN, y='CANTIDAD_REGULACIONES',
-                                           title=f'Regulaciones por Producto - {fecha_dt_seleccionada.strftime("%d-%m-%Y")}',
-                                           labels={PRODUCTO_COLUMN: 'Producto', 'CANTIDAD_REGULACIONES': 'Nro. de Regulaciones'},
-                                           color_discrete_sequence=px.colors.qualitative.Plotly)
-                 st.plotly_chart(fig_regulaciones, use_container_width=True)
+            # 5. Gráfico por Cantidad de Regulaciones que tenga cada Producto
+            if all(col in df_filtrado_fecha.columns for col in REGULACION_COLUMNS_TO_COUNT):
+                df_temp_regulaciones = df_filtrado_fecha.copy()
+                for col in REGULACION_COLUMNS_TO_COUNT:
+                    df_temp_regulaciones[f'tiene_{col}'] = df_temp_regulaciones[col].apply(lambda x: 1 if pd.notna(x) else 0)
+
+                columnas_a_sumar = [f'tiene_{col}' for col in REGULACION_COLUMNS_TO_COUNT]
+                regulaciones_por_producto = df_temp_regulaciones.groupby(PRODUCTO_COLUMN)[columnas_a_sumar].sum().sum(axis=1).reset_index(name='CANTIDAD_REGULACIONES')
+                
+                if not regulaciones_por_producto.empty and 'CANTIDAD_REGULACIONES' in regulaciones_por_producto.columns:
+                    fig_regulaciones = px.bar(regulaciones_por_producto,
+                                              x=PRODUCTO_COLUMN, y='CANTIDAD_REGULACIONES',
+                                              title=f'Regulaciones por Producto - {fecha_dt_seleccionada.strftime("%d-%m-%Y")}',
+                                              labels={PRODUCTO_COLUMN: 'Producto', 'CANTIDAD_REGULACIONES': 'Nro. de Regulaciones'},
+                                              color_discrete_sequence=px.colors.qualitative.Plotly)
+                    st.plotly_chart(fig_regulaciones, use_container_width=True)
+                else:
+                    st.warning("No hay datos suficientes para calcular el gráfico de regulaciones.")
             else:
-                st.warning("No se ha podido calcular el gráfico de regulaciones. Verifica la existencia y el contenido de las columnas de regulación.")
+                st.warning("No se han encontrado las columnas necesarias para el gráfico de regulaciones.")
 
 
             # --- Tabla de Datos Filtrados ---
