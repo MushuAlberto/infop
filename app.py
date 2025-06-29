@@ -16,7 +16,7 @@ st.markdown("### Análisis Detallado de Operaciones")
 
 # --- Configuración de Nombres de Columnas (¡AJUSTA ESTAS SI TUS NOMBRES SON DIFERENTES!) ---
 VOLUME_COLUMN = 'TONELAJE'           # Columna que contiene el volumen/tonelaje.
-EMPRESA_COLUMN = 'EMPRESA DE TRANSPORTE' # Columna que contiene los nombres de las empresas de transporte.
+EMPRESA_COLUMN = 'EMPRESA DE TRANSPORTE' # Columna que contiene los nombres de las empresas de transporte. ¡ASEGÚRATE QUE ESTE NOMBRE SEA EXACTO AL DEL EXCEL!
 FECHA_COLUMN = 'FECHA'              # Columna que contiene las fechas.
 PRODUCTO_COLUMN = 'PRODUCTO'        # Columna que contiene los nombres de los productos.
 DESTINO_COLUMN = 'DESTINO'          # Columna que contiene los destinos.
@@ -88,6 +88,7 @@ if uploaded_file is not None:
             st.error(f"Error: No se encontró la columna '{PRODUCTO_COLUMN}'.")
             st.stop()
         
+        # Validar Columna de Empresa - Confirmada como 'EMPRESA DE TRANSPORTE'
         if EMPRESA_COLUMN not in df.columns:
             st.error(f"Error: No se encontró la columna '{EMPRESA_COLUMN}'. Por favor, verifica que la columna para las empresas se llame exactamente '{EMPRESA_COLUMN}'.")
             st.stop()
@@ -121,7 +122,6 @@ if uploaded_file is not None:
         df_filtrado_fecha = df[df[FECHA_COLUMN].dt.date == fecha_dt_seleccionada.date()]
 
         # --- Renderizado del Dashboard ---
-        # CORRECCIÓN DEL SYNTAX ERROR: Cambiado el formato de la fecha para evitar conflicto de comillas
         st.header(f"Análisis para el {fecha_dt_seleccionada.strftime('%d-%m-%Y')}")
 
         if not df_filtrado_fecha.empty:
@@ -182,6 +182,7 @@ if uploaded_file is not None:
                 st.warning(f"No se encontró la columna '{DESTINO_COLUMN}'. El gráfico por destino no se mostrará.")
 
             # 3. Gráfico por Cantidad de Guías Emitidas por Producto
+            # Aseguramos que guias_por_producto se inicialice siempre
             if GUIA_COLUMN_IDENTIFIER and GUIA_COLUMN_IDENTIFIER in df_filtrado_fecha.columns:
                 guias_por_producto = df_filtrado_fecha.groupby(PRODUCTO_COLUMN)[GUIA_COLUMN_IDENTIFIER].nunique().reset_index(name='CANTIDAD_GUIAS')
             else: # Contar filas si no hay columna específica para guías
