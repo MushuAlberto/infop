@@ -16,9 +16,9 @@ st.markdown("### Análisis Detallado de Operaciones")
 
 # --- Configuración de Nombres de Columnas (¡AJUSTA ESTAS SI TUS NOMBRES SON DIFERENTES!) ---
 VOLUME_COLUMN = 'TONELAJE'           # Columna que contiene el volumen/tonelaje.
-# !!! IMPORTANTE: Basado en la imagen del error y el OCR previo, asumimos que la columna de empresa es 'EMPRESA DE TRANSPORTE'.
-# SI EN TU ARCHIVO REALMENTE SE LLAMA 'L' O ALGO DIFERENTE, POR FAVOR AJUSTA ESTA LÍNEA.
-EMPRESA_COLUMN = 'EMPRESA DE TRANSPORTE' 
+# *** COLUMNA DE EMPRESA: Se intentará detectar automáticamente entre las opciones comunes. ***
+# *** Si tu columna tiene un nombre diferente, ajústalo aquí. ***
+POSIBLES_EMPRESA_COLUMNAS = ['EMPRESA DE TRANSPORTE', 'L', 'PATENTE'] # Lista de nombres posibles para la columna de empresa.
 FECHA_COLUMN = 'FECHA'              # Columna que contiene las fechas.
 PRODUCTO_COLUMN = 'PRODUCTO'        # Columna que contiene los nombres de los productos.
 DESTINO_COLUMN = 'DESTINO'          # Columna que contiene los destinos.
@@ -90,13 +90,22 @@ if uploaded_file is not None:
             st.error(f"Error: No se encontró la columna '{PRODUCTO_COLUMN}'.")
             st.stop()
         
-        # Validar Columna de Empresa - ¡AJUSTADA A 'EMPRESA DE TRANSPORTE'!
-        if EMPRESA_COLUMN not in df.columns:
-            st.error(f"Error: No se encontró la columna '{EMPRESA_COLUMN}'. Por favor, verifica que la columna para las empresas se llame exactamente '{EMPRESA_COLUMN}'.")
-            st.stop()
+        # --- Detección de la Columna de Empresa ---
+        found_empresa_column = None
+        for col_name in POSIBLES_EMPRESA_COLUMNAS:
+            if col_name in df.columns:
+                found_empresa_column = col_name
+                break # Si se encuentra, salimos del bucle
 
-        # Aplicar el mapeo de nombres de empresas
-        df[EMPRESA_COLUMN] = df[EMPRESA_COLUMN].map(empresa_mapping).fillna(df[EMPRESA_COLUMN])
+        if found_empresa_column is None:
+            st.error(f"Error: No se encontró ninguna de las columnas esperadas para las empresas: {POSIBLES_EMPRESA_COLUMNAS}. Por favor, verifica los nombres de las columnas en tu archivo Excel y ajústalos en la variable `POSIBLES_EMPRESA_COLUMNAS`.")
+            st.stop()
+        else:
+            # Asignar la columna detectada a EMPRESA_COLUMN
+            EMPRESA_COLUMN = found_empresa_column
+            st.sidebar.write(f"Columna de empresa detectada: **`{EMPRESA_COLUMN}`**")
+            # Aplicar el mapeo de nombres de empresas
+            df[EMPRESA_COLUMN] = df[EMPRESA_COLUMN].map(empresa_mapping).fillna(df[EMPRESA_COLUMN])
 
 
         # 4. Validar columnas de regulación
@@ -140,7 +149,7 @@ if uploaded_file is not None:
 
             # 1. Gráfico por Empresa
             tonelaje_por_empresa = None
-            if EMPRESA_COLUMN in df_filtrado_fecha.columns:
+            if EMPRESA_COLUMN in df_filtrado_fecha.columns: # Doble chequeo por si acaso
                 tonelaje_por_empresa = df_filtrado_fecha.groupby(EMPRESA_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
 
             # 2. Gráfico por Destino del Producto
@@ -256,9 +265,7 @@ if uploaded_file is not None:
 
             # --- Tabla de Datos Filtrados ---
             st.subheader("📋 Tabla de Datos Detallados")
-            # Definir las columnas que queremos mostrar en la tabla de datos finales
             columnas_tabla = [FECHA_COLUMN, PRODUCTO_COLUMN, DESTINO_COLUMN, EMPRESA_COLUMN, VOLUME_COLUMN]
-            # Filtrar para solo incluir las columnas que realmente existen en el DataFrame cargado
             columnas_existentes_tabla = [col for col in columnas_tabla if col in df_filtrado_fecha.columns]
             st.dataframe(df_filtrado_fecha[columnas_existentes_tabla], use_container_width=True)
 
@@ -268,7 +275,7 @@ if uploaded_file is not None:
 
     except Exception as e:
         st.error(f"Ocurrió un error durante el procesamiento de los datos: {e}")
-        st.exception(e) # Muestra el traceback completo para depuración
+        st.exception(e)
 
 else:
     st.info("Por favor, carga tu archivo Excel (.xlsx) en la barra lateral para comenzar.")
