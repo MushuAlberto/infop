@@ -135,10 +135,10 @@ if uploaded_file is not None:
 
             # --- Agrupación de Datos para Gráficos y Insights ---
 
-            # Inicializar DataFrames vacíos para evitar NameError si no hay datos
+            # Inicializar DataFrames que podrían no tener datos
             tonelaje_por_empresa = pd.DataFrame()
             guias_por_empresa = pd.DataFrame()
-            empresa_data = pd.DataFrame()
+            empresa_data = pd.DataFrame() # Para el gráfico combinado de empresa
             
             tonelaje_por_destino = pd.DataFrame()
             guias_por_producto = pd.DataFrame()
@@ -232,6 +232,38 @@ if uploaded_file is not None:
                     st.warning("No hay datos suficientes para calcular el gráfico de regulaciones.")
             else:
                 st.warning("No se han encontrado las columnas necesarias para el gráfico de regulaciones.")
+
+
+            # --- Gráfico Combinado: Tonelaje y Guías por Empresa ---
+            if not empresa_data.empty:
+                # Creamos la figura base de barras para el tonelaje
+                fig_empresa_combinado = px.bar(empresa_data,
+                                               x=EMPRESA_COLUMN,
+                                               y=VOLUME_COLUMN,
+                                               title=f'Tonelaje y Guías por Empresa - {fecha_dt_seleccionada.strftime("%d-%m-%Y")}',
+                                               labels={EMPRESA_COLUMN: 'Empresa', VOLUME_COLUMN: 'Tonelaje (toneladas)'},
+                                               color_discrete_sequence=px.colors.qualitative.Vivid)
+                
+                # Añadimos la línea para la cantidad de guías
+                if 'CANTIDAD_GUIAS' in empresa_data.columns:
+                    fig_empresa_combinado.add_scatter(x=empresa_data[EMPRESA_COLUMN], 
+                                                      y=empresa_data['CANTIDAD_GUIAS'], 
+                                                      mode='lines+markers', 
+                                                      name='Guías', 
+                                                      yaxis='y2', # Usar un eje Y secundario para las guías
+                                                      line=dict(color='firebrick', width=2, dash='dash'))
+                    
+                    # Configuramos los dos ejes Y
+                    fig_empresa_combinado.update_layout(
+                        yaxis=dict(title='Tonelaje (toneladas)', color='blue'),
+                        yaxis2=dict(title='Cantidad de Guías', overlaying='y', side='right', color='red'),
+                        xaxis=dict(title='Empresa')
+                    )
+                    st.plotly_chart(fig_empresa_combinado, use_container_width=True)
+                else:
+                    st.warning("La columna 'CANTIDAD_GUIAS' no se pudo generar correctamente. El gráfico combinado de empresa no se mostrará.")
+            elif EMPRESA_COLUMN in df_filtrado_fecha.columns: # Si la columna existe pero no hay datos para esa fecha
+                 st.warning("No hay datos de tonelaje o guías por empresa para mostrar el gráfico.")
 
 
             # --- Tabla de Datos Filtrados ---
