@@ -121,7 +121,6 @@ if uploaded_file is not None:
         df_filtrado_fecha = df[df[FECHA_COLUMN].dt.date == fecha_dt_seleccionada.date()]
 
         # --- Renderizado del Dashboard ---
-        # CORRECCIÓN DEL SYNTAX ERROR: Se eliminó el espacio extra entre fecha_ y dt_seleccionada.
         st.header(f"Análisis para el {fecha_dt_seleccionada.strftime('%d-%m-%Y')}")
 
         if not df_filtrado_fecha.empty:
@@ -187,7 +186,8 @@ if uploaded_file is not None:
                 guias_por_producto = df_filtrado_fecha.groupby(PRODUCTO_COLUMN)[GUIA_COLUMN_IDENTIFIER].nunique().reset_index(name='CANTIDAD_GUIAS')
             else: # Contar filas si no hay columna específica para guías
                 guias_por_producto = df_filtrado_fecha.groupby(PRODUCTO_COLUMN).size().reset_index(name='CANTIDAD_GUIAS')
-            # El código que generaba el gráfico individual de guías por producto está comentado.
+            # Este bloque de código que generaba el gráfico individual de guías por producto está comentado.
+            # Su propósito era mostrar solo guías, pero ahora se integra en el gráfico combinado.
 
 
             # 4. Gráfico por Tonelaje de Cada Producto
