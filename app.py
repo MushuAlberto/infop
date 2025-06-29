@@ -147,25 +147,22 @@ if uploaded_file is not None:
 
             # 1. Datos para Gráfico Combinado por Empresa (Tonelaje y Guías)
             if EMPRESA_COLUMN in df_filtrado_fecha.columns:
-                # Tonelaje por Empresa
                 tonelaje_por_empresa = df_filtrado_fecha.groupby(EMPRESA_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
                 
-                # Cantidad de Guías por Empresa (contando filas si no hay columna específica)
                 if GUIA_COLUMN_IDENTIFIER and GUIA_COLUMN_IDENTIFIER in df_filtrado_fecha.columns:
                     guias_por_empresa = df_filtrado_fecha.groupby(EMPRESA_COLUMN)[GUIA_COLUMN_IDENTIFIER].nunique().reset_index(name='CANTIDAD_GUIAS')
                 else: # Contar filas si no hay columna específica para guías
                     guias_por_empresa = df_filtrado_fecha.groupby(EMPRESA_COLUMN).size().reset_index(name='CANTIDAD_GUIAS')
                 
-                # Unir las dos métricas por empresa
                 if not tonelaje_por_empresa.empty and not guias_por_empresa.empty:
                     empresa_data = pd.merge(tonelaje_por_empresa, guias_por_empresa, on=EMPRESA_COLUMN, how='left')
-                    empresa_data.fillna(0, inplace=True) # Rellenar NaN si alguna métrica falta
-                elif not tonelaje_por_empresa.empty: # Si solo tenemos tonelaje
+                    empresa_data.fillna(0, inplace=True)
+                elif not tonelaje_por_empresa.empty:
                     empresa_data = tonelaje_por_empresa
-                    empresa_data['CANTIDAD_GUIAS'] = 0 # Añadir columna de guías con 0
-                elif not guias_por_empresa.empty: # Si solo tenemos guías
+                    empresa_data['CANTIDAD_GUIAS'] = 0
+                elif not guias_por_empresa.empty:
                     empresa_data = guias_por_empresa
-                    empresa_data[VOLUME_COLUMN] = 0 # Añadir columna de tonelaje con 0
+                    empresa_data[VOLUME_COLUMN] = 0
             
 
             # 2. Gráfico por Destino del Producto (solo barras de tonelaje)
@@ -184,7 +181,6 @@ if uploaded_file is not None:
                 st.warning(f"No se encontró la columna '{DESTINO_COLUMN}'. El gráfico por destino no se mostrará.")
 
             # 3. Gráfico por Cantidad de Guías Emitidas por Producto
-            # Aseguramos que guias_por_producto se inicialice siempre
             if GUIA_COLUMN_IDENTIFIER and GUIA_COLUMN_IDENTIFIER in df_filtrado_fecha.columns:
                 guias_por_producto = df_filtrado_fecha.groupby(PRODUCTO_COLUMN)[GUIA_COLUMN_IDENTIFIER].nunique().reset_index(name='CANTIDAD_GUIAS')
             else: # Contar filas si no hay columna específica para guías
@@ -234,34 +230,48 @@ if uploaded_file is not None:
                 st.warning("No se han encontrado las columnas necesarias para el gráfico de regulaciones.")
 
 
-            # --- Gráfico Combinado: Tonelaje y Guías por Empresa ---
-            if not empresa_data.empty:
-                fig_empresa_combinado = px.bar(empresa_data,
-                                               x=EMPRESA_COLUMN,
-                                               y=VOLUME_COLUMN,
-                                               title=f'Tonelaje y Guías por Empresa - {fecha_dt_seleccionada.strftime("%d-%m-%Y")}',
-                                               labels={EMPRESA_COLUMN: 'Empresa', VOLUME_COLUMN: 'Tonelaje (toneladas)'},
-                                               color_discrete_sequence=px.colors.qualitative.Vivid)
+            # --- Gráfico Combinado: Tonelaje y Guías por Producto ---
+            # Este es el nuevo gráfico combinado que solicitaste.
+            if not tonelaje_por_producto_detail.empty and not guias_por_producto.empty:
+                # Aseguramos que ambos dataframes tengan las mismas columnas para el merge
+                # Si uno está vacío, lo creamos con las columnas necesarias y ceros.
+                if 'CANTIDAD_GUIAS' not in guias_por_producto.columns:
+                    guias_por_producto['CANTIDAD_GUIAS'] = 0
                 
-                # Añadimos la línea para la cantidad de guías
-                if 'CANTIDAD_GUIAS' in empresa_data.columns:
-                    fig_empresa_combinado.add_scatter(x=empresa_data[EMPRESA_COLUMN], 
-                                                      y=empresa_data['CANTIDAD_GUIAS'], 
-                                                      mode='lines+markers', 
-                                                      name='Guías', 
-                                                      yaxis='y2', 
-                                                      line=dict(color='firebrick', width=2, dash='dash'))
+                # Unir los datos de tonelaje y guías por producto
+                producto_data_combinado = pd.merge(tonelaje_por_producto_detail, guias_por_producto, on=PRODUCTO_COLUMN, how='left')
+                producto_data_combinado.fillna(0, inplace=True)
+
+                if not producto_data_combinado.empty:
+                    fig_producto_combinado = px.bar(producto_data_combinado,
+                                                    x=PRODUCTO_COLUMN,
+                                                    y=VOLUME_COLUMN,
+                                                    title=f'Tonelaje y Guías por Producto - {fecha_dt_seleccionada.strftime("%d-%m-%Y")}',
+                                                    labels={PRODUCTO_COLUMN: 'Producto', VOLUME_COLUMN: 'Tonelaje (toneladas)'},
+                                                    color_discrete_sequence=px.colors.qualitative.Pastel)
                     
-                    fig_empresa_combinado.update_layout(
-                        yaxis=dict(title='Tonelaje (toneladas)', color='blue'),
-                        yaxis2=dict(title='Cantidad de Guías', overlaying='y', side='right', color='red'),
-                        xaxis=dict(title='Empresa')
-                    )
-                    st.plotly_chart(fig_empresa_combinado, use_container_width=True)
+                    # Añadimos la línea para la cantidad de guías
+                    if 'CANTIDAD_GUIAS' in producto_data_combinado.columns:
+                        fig_producto_combinado.add_scatter(x=producto_data_combinado[PRODUCTO_COLUMN], 
+                                                          y=producto_data_combinado['CANTIDAD_GUIAS'], 
+                                                          mode='lines+markers', 
+                                                          name='Guías', 
+                                                          yaxis='y2', # Usar un eje Y secundario para las guías
+                                                          line=dict(color='firebrick', width=2, dash='dash'))
+                        
+                        # Configuramos los dos ejes Y
+                        fig_producto_combinado.update_layout(
+                            yaxis=dict(title='Tonelaje (toneladas)', color='blue'),
+                            yaxis2=dict(title='Cantidad de Guías', overlaying='y', side='right', color='red'),
+                            xaxis=dict(title='Producto')
+                        )
+                        st.plotly_chart(fig_producto_combinado, use_container_width=True)
+                    else:
+                        st.warning("La columna 'CANTIDAD_GUIAS' no se pudo generar correctamente. El gráfico combinado de producto no se mostrará.")
                 else:
-                    st.warning("La columna 'CANTIDAD_GUIAS' no se pudo generar correctamente. El gráfico combinado de empresa no se mostrará.")
-            elif EMPRESA_COLUMN in df_filtrado_fecha.columns: 
-                 st.warning("No hay datos de tonelaje o guías por empresa para mostrar el gráfico.")
+                    st.warning("No hay datos combinados para mostrar el gráfico de producto.")
+            elif PRODUCTO_COLUMN in df_filtrado_fecha.columns:
+                 st.warning("No hay datos de tonelaje o guías por producto para mostrar el gráfico.")
 
 
             # --- Tabla de Datos Filtrados ---
