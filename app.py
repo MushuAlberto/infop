@@ -136,21 +136,13 @@ if uploaded_file is not None:
 
             # --- Agrupación de Datos para Gráficos y Insights ---
 
-            # Inicializar las variables que podrían causar NameError
-            tonelaje_por_empresa = pd.DataFrame()
-            guias_por_empresa = pd.DataFrame()
-            empresa_data = pd.DataFrame()
-            
-            tonelaje_por_destino = pd.DataFrame()
-            guias_por_producto = pd.DataFrame()
-            tonelaje_por_producto_detail = pd.DataFrame()
-            regulaciones_por_producto = pd.DataFrame()
-
+            # 1. Datos para Gráfico Combinado por Empresa (Tonelaje y Guías)
+            empresa_data = pd.DataFrame() # Inicializar vacío
             if EMPRESA_COLUMN in df_filtrado_fecha.columns:
-                # 1. Tonelaje por Empresa
+                # Tonelaje por Empresa
                 tonelaje_por_empresa = df_filtrado_fecha.groupby(EMPRESA_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
                 
-                # 2. Cantidad de Guías por Empresa
+                # Cantidad de Guías por Empresa (contando filas si no hay columna específica)
                 if GUIA_COLUMN_IDENTIFIER and GUIA_COLUMN_IDENTIFIER in df_filtrado_fecha.columns:
                     guias_por_empresa = df_filtrado_fecha.groupby(EMPRESA_COLUMN)[GUIA_COLUMN_IDENTIFIER].nunique().reset_index(name='CANTIDAD_GUIAS')
                 else: # Contar filas si no hay columna específica para guías
@@ -168,7 +160,8 @@ if uploaded_file is not None:
                     empresa_data[VOLUME_COLUMN] = 0 # Añadir columna de tonelaje con 0
             
 
-            # 3. Gráfico por Destino del Producto (solo barras de tonelaje)
+            # 2. Gráfico por Destino del Producto (solo barras de tonelaje)
+            tonelaje_por_destino = pd.DataFrame() # Inicializar
             if DESTINO_COLUMN in df_filtrado_fecha.columns:
                 tonelaje_por_destino = df_filtrado_fecha.groupby(DESTINO_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
                 if not tonelaje_por_destino.empty:
@@ -183,7 +176,8 @@ if uploaded_file is not None:
             else:
                 st.warning(f"No se encontró la columna '{DESTINO_COLUMN}'. El gráfico por destino no se mostrará.")
 
-            # 4. Gráfico por Cantidad de Guías Emitidas por Producto
+            # 3. Gráfico por Cantidad de Guías Emitidas por Producto
+            guias_por_producto = pd.DataFrame() # Inicializar
             if not guias_por_producto.empty:
                 fig_guias = px.bar(guias_por_producto,
                                    x=PRODUCTO_COLUMN, y='CANTIDAD_GUIAS',
@@ -194,8 +188,8 @@ if uploaded_file is not None:
             else:
                 st.warning("No hay datos de guías por producto para mostrar el gráfico.")
 
-            # 5. Gráfico por Tonelaje de Cada Producto
-            tonelaje_por_producto_detail = df_filtrado_fecha.groupby(PRODUCTO_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
+            # 4. Gráfico por Tonelaje de Cada Producto
+            tonelaje_por_producto_detail = pd.DataFrame() # Inicializar
             if not tonelaje_por_producto_detail.empty:
                 fig_producto_tonelaje = px.bar(tonelaje_por_producto_detail,
                                                 x=PRODUCTO_COLUMN, y=VOLUME_COLUMN,
@@ -206,7 +200,7 @@ if uploaded_file is not None:
             else:
                 st.warning("No hay datos de tonelaje por producto para mostrar el gráfico.")
 
-            # 6. Gráfico por Cantidad de Regulaciones por Producto
+            # 5. Gráfico por Cantidad de Regulaciones por Producto
             if all(col in df_filtrado_fecha.columns for col in REGULACION_COLUMNS_TO_COUNT):
                 df_temp_regulaciones = df_filtrado_fecha.copy()
                 for col in REGULACION_COLUMNS_TO_COUNT:
@@ -228,36 +222,6 @@ if uploaded_file is not None:
                 st.warning("No se han encontrado las columnas necesarias para el gráfico de regulaciones.")
 
 
-            # --- Gráfico Combinado: Tonelaje y Guías por Empresa ---
-            if not empresa_data.empty:
-                fig_empresa_combinado = px.bar(empresa_data,
-                                               x=EMPRESA_COLUMN,
-                                               y=VOLUME_COLUMN,
-                                               title=f'Tonelaje y Guías por Empresa - {fecha_dt_seleccionada.strftime("%d-%m-%Y")}',
-                                               labels={EMPRESA_COLUMN: 'Empresa', VOLUME_COLUMN: 'Tonelaje (toneladas)'},
-                                               color_discrete_sequence=px.colors.qualitative.Vivid)
-                
-                # Añadir la línea para la cantidad de guías
-                if 'CANTIDAD_GUIAS' in empresa_data.columns:
-                    fig_empresa_combinado.add_scatter(x=empresa_data[EMPRESA_COLUMN], 
-                                                      y=empresa_data['CANTIDAD_GUIAS'], 
-                                                      mode='lines+markers', 
-                                                      name='Guías', 
-                                                      yaxis='y2', 
-                                                      line=dict(color='firebrick', width=2, dash='dash'))
-                    
-                    fig_empresa_combinado.update_layout(
-                        yaxis=dict(title='Tonelaje (toneladas)', color='blue'),
-                        yaxis2=dict(title='Cantidad de Guías', overlaying='y', side='right', color='red'),
-                        xaxis=dict(title='Empresa')
-                    )
-                    st.plotly_chart(fig_empresa_combinado, use_container_width=True)
-                else:
-                    st.warning("La columna 'CANTIDAD_GUIAS' no se pudo generar correctamente. El gráfico combinado no se mostrará.")
-            elif EMPRESA_COLUMN in df_filtrado_fecha.columns: # Si la columna existe pero no hay datos para la fecha
-                 st.warning("No hay datos de tonelaje o guías por empresa para mostrar el gráfico.")
-
-
             # --- Tabla de Datos Filtrados ---
             st.subheader("📋 Tabla de Datos Detallados")
             columnas_tabla = [FECHA_COLUMN, PRODUCTO_COLUMN, DESTINO_COLUMN, EMPRESA_COLUMN, VOLUME_COLUMN]
@@ -270,7 +234,7 @@ if uploaded_file is not None:
 
     except Exception as e:
         st.error(f"Ocurrió un error durante el procesamiento de los datos: {e}")
-        st.exception(e) # Muestra el traceback completo para depuración
+        st.exception(e)
 
 else:
     st.info("Por favor, carga tu archivo Excel (.xlsx) en la barra lateral para comenzar.")
