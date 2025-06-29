@@ -98,17 +98,20 @@ if uploaded_file is not None:
             col1.metric(label=f"Tonelaje Total del Día", value=f"{tonelaje_total_dia:,.2f} Ton")
             col2.metric(label=f"Productos Distintos", value=f"{productos_distintos_dia}")
 
-            # --- Cálculos para Gráficos ---
+            # --- RENDERIZADO DE GRÁFICOS Y ANÁLISIS ---
+            st.subheader("📈 Visualizaciones Analíticas")
             
             # --- GRÁFICO 1: TONELAJE Y GUÍAS POR EMPRESA (COMBINADO) ---
             tonelaje_por_empresa = df_filtrado_fecha.groupby(EMPRESA_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
             guias_por_empresa = df_filtrado_fecha.groupby(EMPRESA_COLUMN).size().reset_index(name='CANTIDAD_GUIAS')
-            if not tonelaje_por_empresa.empty:
+            empresa_data = pd.DataFrame()
+            if not tonelaje_por_empresa.empty and not guias_por_empresa.empty:
                 empresa_data = pd.merge(tonelaje_por_empresa, guias_por_empresa, on=EMPRESA_COLUMN, how='left').fillna(0)
-                
+            
+            if not empresa_data.empty:
                 fig_empresa_combinado = px.bar(empresa_data,
                                                x=EMPRESA_COLUMN, y=VOLUME_COLUMN,
-                                               title=f'Tonelaje y Guías por Empresa',
+                                               title=f'Análisis de Rendimiento por Empresa',
                                                labels={EMPRESA_COLUMN: 'Empresa', VOLUME_COLUMN: 'Tonelaje'})
                 fig_empresa_combinado.add_scatter(x=empresa_data[EMPRESA_COLUMN], 
                                                   y=empresa_data['CANTIDAD_GUIAS'], 
@@ -117,18 +120,36 @@ if uploaded_file is not None:
                                                   line=dict(color='firebrick', width=2, dash='dash'))
                 fig_empresa_combinado.update_layout(yaxis2=dict(title='Cantidad de Guías', overlaying='y', side='right'))
                 st.plotly_chart(fig_empresa_combinado, use_container_width=True)
+
+                # ANÁLISIS EJECUTIVO - EMPRESA
+                with st.expander("Ver Análisis Ejecutivo por Empresa"):
+                    empresa_top1 = empresa_data.iloc[0]
+                    tonelaje_total = empresa_data[VOLUME_COLUMN].sum()
+                    porcentaje_top1 = (empresa_top1[VOLUME_COLUMN] / tonelaje_total) * 100 if tonelaje_total > 0 else 0
+                    
+                    st.markdown(f"#### Resumen Ejecutivo del Rendimiento de Transportistas:")
+                    st.markdown(f"**- Dominio del Mercado:** **{empresa_top1[EMPRESA_COLUMN]}** lidera el movimiento de tonelaje con **{empresa_top1[VOLUME_COLUMN]:,.2f} Toneladas**, concentrando el **{porcentaje_top1:.1f}%** del total del día. Esto indica una alta dependencia en este socio logístico.")
+                    
+                    eficiencia = empresa_top1[VOLUME_COLUMN] / empresa_top1['CANTIDAD_GUIAS'] if empresa_top1['CANTIDAD_GUIAS'] > 0 else 0
+                    st.markdown(f"**- Eficiencia Operativa:** Con **{empresa_top1['CANTIDAD_GUIAS']} guías emitidas**, el líder transportista promedia **{eficiencia:.2f} toneladas por guía**. Es crucial monitorear esta métrica como indicador de la eficiencia en cada envío.")
+                    
+                    if len(empresa_data) > 1:
+                        empresa_last = empresa_data.iloc[-1]
+                        st.markdown(f"**- Oportunidad/Riesgo:** La empresa con menor participación es **{empresa_last[EMPRESA_COLUMN]}** con solo **{empresa_last[VOLUME_COLUMN]:,.2f} toneladas**. Evaluar su desempeño y rol estratégico podría revelar oportunidades de optimización o necesidad de renegociación.")
+            
             else:
                 st.warning("No hay datos de empresa para mostrar en el gráfico.")
 
             # --- GRÁFICO 2: TONELAJE Y GUÍAS POR PRODUCTO (COMBINADO) ---
             tonelaje_por_producto = df_filtrado_fecha.groupby(PRODUCTO_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
             guias_por_producto = df_filtrado_fecha.groupby(PRODUCTO_COLUMN).size().reset_index(name='CANTIDAD_GUIAS')
+            producto_data_combinado = pd.DataFrame()
             if not tonelaje_por_producto.empty:
                 producto_data_combinado = pd.merge(tonelaje_por_producto, guias_por_producto, on=PRODUCTO_COLUMN, how='left').fillna(0)
                 
                 fig_producto_combinado = px.bar(producto_data_combinado,
                                                   x=PRODUCTO_COLUMN, y=VOLUME_COLUMN,
-                                                  title=f'Tonelaje y Guías por Producto',
+                                                  title=f'Análisis de Rendimiento por Producto',
                                                   labels={PRODUCTO_COLUMN: 'Producto', VOLUME_COLUMN: 'Tonelaje'})
                 fig_producto_combinado.add_scatter(x=producto_data_combinado[PRODUCTO_COLUMN], 
                                                      y=producto_data_combinado['CANTIDAD_GUIAS'], 
@@ -137,6 +158,21 @@ if uploaded_file is not None:
                                                      line=dict(color='green', width=2, dash='dot'))
                 fig_producto_combinado.update_layout(yaxis2=dict(title='Cantidad de Guías', overlaying='y', side='right'))
                 st.plotly_chart(fig_producto_combinado, use_container_width=True)
+
+                # ANÁLISIS EJECUTIVO - PRODUCTO
+                with st.expander("Ver Análisis Ejecutivo por Producto"):
+                    producto_top1 = producto_data_combinado.iloc[0]
+                    porcentaje_top1_prod = (producto_top1[VOLUME_COLUMN] / tonelaje_total_dia) * 100 if tonelaje_total_dia > 0 else 0
+                    
+                    st.markdown(f"#### Resumen Ejecutivo del Portafolio de Productos:")
+                    st.markdown(f"**- Producto Estrella (Volumen):** El producto **{producto_top1[PRODUCTO_COLUMN]}** representa la mayor parte de nuestras operaciones con **{producto_top1[VOLUME_COLUMN]:,.2f} toneladas**, equivalentes al **{porcentaje_top1_prod:.1f}%** del total del día.")
+                    
+                    st.markdown(f"**- Frecuencia de Despacho:** A pesar de su volumen, el producto se movió a través de **{producto_top1['CANTIDAD_GUIAS']} guías**. Esto nos permite analizar si la estrategia logística para este producto (pocos viajes grandes o muchos viajes pequeños) es la óptima.")
+                    
+                    if len(producto_data_combinado) > 1:
+                        producto_last = producto_data_combinado.iloc[-1]
+                        st.markdown(f"**- Productos de Nicho:** El producto con menor movimiento es **{producto_last[PRODUCTO_COLUMN]}**. Es fundamental evaluar su rentabilidad para decidir si requiere un impulso en ventas o si se debe considerar su ciclo de vida.")
+
             else:
                 st.warning("No hay datos de producto para mostrar en el gráfico.")
             
@@ -146,10 +182,20 @@ if uploaded_file is not None:
                 fig_destino = px.bar(tonelaje_por_destino,
                                      x=DESTINO_COLUMN,
                                      y=VOLUME_COLUMN,
-                                     title=f'Tonelaje por Destino',
+                                     title=f'Análisis de Tonelaje por Destino',
                                      labels={DESTINO_COLUMN: 'Destino', VOLUME_COLUMN: 'Tonelaje (toneladas)'},
                                      color_discrete_sequence=px.colors.qualitative.Prism)
                 st.plotly_chart(fig_destino, use_container_width=True)
+
+                # ANÁLISIS EJECUTIVO - DESTINO
+                with st.expander("Ver Análisis Ejecutivo por Destino"):
+                    destino_top1 = tonelaje_por_destino.iloc[0]
+                    porcentaje_top1_dest = (destino_top1[VOLUME_COLUMN] / tonelaje_total_dia) * 100 if tonelaje_total_dia > 0 else 0
+                    
+                    st.markdown(f"#### Resumen Ejecutivo de la Distribución Geográfica:")
+                    st.markdown(f"**- Principal Mercado:** **{destino_top1[DESTINO_COLUMN]}** es nuestro destino clave, recibiendo **{destino_top1[VOLUME_COLUMN]:,.2f} toneladas** o el **{porcentaje_top1_dest:.1f}%** de nuestro volumen total.")
+                    st.markdown(f"**- Estrategia de Expansión:** Analizar los destinos con menor tonelaje puede identificar mercados con potencial de crecimiento o zonas con baja cobertura logística que necesiten atención.")
+
             else:
                 st.warning("No hay datos de destino para mostrar en el gráfico.")
             
@@ -165,6 +211,6 @@ if uploaded_file is not None:
 
     except Exception as e:
         st.error(f"Ocurrió un error: {e}")
-        st.exception(e) # Muestra el traceback completo
+        st.exception(e)
 else:
     st.info("Carga tu archivo Excel para comenzar.")
