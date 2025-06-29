@@ -141,8 +141,11 @@ if uploaded_file is not None:
             empresa_data = pd.DataFrame() # Para el gráfico combinado de empresa
             
             tonelaje_por_destino = pd.DataFrame()
-            guias_por_producto = pd.DataFrame() # Este DataFrame se calcula pero su gráfico individual se elimina
-            tonelaje_por_producto_detail = pd.DataFrame()
+            guias_por_producto = pd.DataFrame()
+            # tonelaje_por_producto_detail = pd.DataFrame() # ESTE SE ELIMINA PORQUE NO SE VA A USAR DIRECTAMENTE
+            # Lo que se usa ahora es el dataframe combinado 'producto_data_combinado'
+            tonelaje_por_producto_detail = pd.DataFrame() # Se mantiene por si acaso se necesita
+
             regulaciones_por_producto = pd.DataFrame()
 
             # 1. Datos para Gráfico Combinado por Empresa (Tonelaje y Guías)
@@ -180,17 +183,19 @@ if uploaded_file is not None:
             else:
                 st.warning(f"No se encontró la columna '{DESTINO_COLUMN}'. El gráfico por destino no se mostrará.")
 
-            # 3. Gráfico por Cantidad de Guías Emitidas por Producto (ESTE GRÁFICO SE ELIMINA)
-            # El cálculo de guías_por_producto se mantiene por si acaso fuera necesario para insights,
-            # pero el código para visualizarlo ha sido eliminado para evitar duplicidad.
+            # 3. Gráfico por Cantidad de Guías Emitidas por Producto (AHORA OCULTO/ELIMINADO COMPLETAMENTE)
+            # El cálculo se mantiene por si es necesario para insights, pero el gráfico individual se elimina.
             if GUIA_COLUMN_IDENTIFIER and GUIA_COLUMN_IDENTIFIER in df_filtrado_fecha.columns:
                 guias_por_producto = df_filtrado_fecha.groupby(PRODUCTO_COLUMN)[GUIA_COLUMN_IDENTIFIER].nunique().reset_index(name='CANTIDAD_GUIAS')
             else: # Contar filas si no hay columna específica para guías
                 guias_por_producto = df_filtrado_fecha.groupby(PRODUCTO_COLUMN).size().reset_index(name='CANTIDAD_GUIAS')
+            # El código que generaba el gráfico individual de guías por producto ha sido ELIMINADO.
 
             # 4. Gráfico por Tonelaje de Cada Producto
             tonelaje_por_producto_detail = df_filtrado_fecha.groupby(PRODUCTO_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
             if not tonelaje_por_producto_detail.empty:
+                # Este gráfico es el que se mantiene individualmente.
+                # Si quieres combinarlo con guías, se hará en el siguiente punto.
                 fig_producto_tonelaje = px.bar(tonelaje_por_producto_detail,
                                                 x=PRODUCTO_COLUMN, y=VOLUME_COLUMN,
                                                 title=f'Tonelaje por Producto - {fecha_dt_seleccionada.strftime("%d-%m-%Y")}',
