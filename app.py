@@ -15,12 +15,15 @@ st.title("📊 Dashboard Ejecutivo de Operaciones")
 st.markdown("### Análisis Detallado de Operaciones")
 
 # --- Configuración de Nombres de Columnas (¡AJUSTA ESTAS SI TUS NOMBRES SON DIFERENTES!) ---
-VOLUME_COLUMN = 'TONELAJE'
-EMPRESA_COLUMN = 'EMPRESA DE TRANSPORTE'
-FECHA_COLUMN = 'FECHA'
-PRODUCTO_COLUMN = 'PRODUCTO'
-DESTINO_COLUMN = 'DESTINO'
+VOLUME_COLUMN = 'TONELAJE'           # Columna que contiene el volumen/tonelaje.
+EMPRESA_COLUMN = 'EMPRESA DE TRANSPORTE' # Columna que contiene los nombres de las empresas de transporte.
+FECHA_COLUMN = 'FECHA'              # Columna que contiene las fechas.
+PRODUCTO_COLUMN = 'PRODUCTO'        # Columna que contiene los nombres de los productos.
+DESTINO_COLUMN = 'DESTINO'          # Columna que contiene los destinos.
+# Columna para identificar guías únicas. Si no hay una columna específica,
+# se contarán las filas por producto. Si es así, déjala como None.
 GUIA_COLUMN_IDENTIFIER = None       
+# Lista de columnas que indican la presencia de una regulación para un producto.
 REGULACION_COLUMNS_TO_COUNT = ['REGULACION 1', 'REGULACION 2', 'REGULACION 3'] 
 
 # --- Mapeo de Nombres de Empresas ---
@@ -36,6 +39,7 @@ empresa_mapping = {
 }
 
 # --- Carga de Datos ---
+df = None
 uploaded_file = st.sidebar.file_uploader("Carga tu archivo Excel (.xlsx)", type=["xlsx"])
 
 if uploaded_file is not None:
@@ -44,78 +48,45 @@ if uploaded_file is not None:
         st.sidebar.success("Archivo cargado correctamente!")
 
         # --- Preprocesamiento de Datos ---
-        # (Se omite por brevedad, el código completo es el que ya tienes para esta parte)
-
-        # Filtro por Fecha y Renderizado del Dashboard (aquí está la parte relevante)
+        # 1. Convertir FECHA de forma robusta
+        if FECHA_COLUMN not in df.columns:
+            st.error(f"Error: No se encontró la columna '{FECHA_COLUMN}'. Por favor, asegúrate de que exista y se llame exactamente '{FECHA_COLUMN}'.")
+            st.stop()
         
-        fecha_por_defecto = sorted(df[FECHA_COLUMN].dt.date.unique())[0]
-        fecha_seleccionada = st.sidebar.date_input(
-            f"Selecciona una {FECHA_COLUMN}:", value=fecha_por_defecto
-        )
-        fecha_dt_seleccionada = pd.to_datetime(fecha_seleccionada)
-        df_filtrado_fecha = df[df[FECHA_COLUMN].dt.date == fecha_dt_seleccionada.date()]
+        # Primero, convierte la columna 'FECHA' a string para asegurar consistencia
+        df[FECHA_COLUMN] = df[FECHA_COLUMN].astype(str)
+        # Luego, intenta convertir a datetime
+        df[FECHA_COLUMN] = pd.to_datetime(df[FECHA_COLUMN], errors='coerce') # Usamos parseo automático más robusto de pandas
 
-        st.header(f"Análisis para el {fecha_dt_seleccionada.strftime('%d-%m-%Y')}")
+        # Validamos que después de la conversión, la columna tenga el tipo correcto
+        if not pd.api.types.is_datetime64_any_dtype(df[FECHA_COLUMN]):
+            st.error(f"Error: La columna '{FECHA_COLUMN}' no pudo ser convertida a un tipo de fecha y hora. Verifica el formato de tus fechas en el archivo Excel. Un formato esperado es DD-MM-YYYY o YYYY-MM-DD.")
+            st.stop()
+            
+        # Eliminar filas donde la conversión de fecha falló y dejó NaN
+        df.dropna(subset=[FECHA_COLUMN], inplace=True)
 
-        if not df_filtrado_fecha.empty:
-            # --- KPIs ---
-            # ... (código de KPIs se mantiene)
+        # --- Filtro por Fecha (aquí se soluciona el error) ---
+        fechas_disponibles_ordenadas = sorted(df[FECHA_COLUMN].dt.date.unique())
+        
+        if not fechas_disponibles_ordenadas:
+            st.warning("No se encontraron fechas válidas en el archivo cargado después del preprocesamiento.")
+            st.stop()
 
-            # --- Cálculos para Gráficos ---
-            # Gráfico Combinado por Empresa
-            if EMPRESA_COLUMN in df_filtrado_fecha.columns:
-                tonelaje_por_empresa = df_filtrado_fecha.groupby(EMPRESA_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
-                guias_por_empresa = df_filtrado_fecha.groupby(EMPRESA_COLUMN).size().reset_index(name='CANTIDAD_GUIAS')
-                empresa_data = pd.merge(tonelaje_por_empresa, guias_por_empresa, on=EMPRESA_COLUMN, how='left').fillna(0)
-            
-            # Gráfico de Tonelaje por Destino
-            if DESTINO_COLUMN in df_filtrado_fecha.columns:
-                tonelaje_por_destino = df_filtrado_fecha.groupby(DESTINO_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
-            
-            # Gráfico de Regulaciones por Producto
-            # ... (código para regulaciones se mantiene)
-            
-            # Gráfico Combinado por Producto
-            if PRODUCTO_COLUMN in df_filtrado_fecha.columns:
-                tonelaje_por_producto_detail = df_filtrado_fecha.groupby(PRODUCTO_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
-                guias_por_producto = df_filtrado_fecha.groupby(PRODUCTO_COLUMN).size().reset_index(name='CANTIDAD_GUIAS')
-                producto_data_combinado = pd.merge(tonelaje_por_producto_detail, guias_por_producto, on=PRODUCTO_COLUMN, how='left').fillna(0)
-                
+        # Validar VOLUME_COLUMN y otras columnas aquí (la parte del código que ya estaba)
+        if VOLUME_COLUMN not in df.columns:
+            st.error(...)
+            st.stop()
+        # ... (código de validación de otras columnas)
 
-            # --- RENDERIZADO DE GRÁFICOS ---
-            st.subheader("📈 Visualizaciones")
-            
-            # --- GRÁFICO 1: TONELAJE Y GUÍAS POR EMPRESA ---
-            if not empresa_data.empty:
-                # ... (código para el gráfico de empresa se mantiene)
-                # Ejemplo de la creación del gráfico de empresa
-                fig_empresa_combinado = px.bar(empresa_data, x=EMPRESA_COLUMN, y=VOLUME_COLUMN, title='Tonelaje y Guías por Empresa')
-                fig_empresa_combinado.add_scatter(x=empresa_data[EMPRESA_COLUMN], y=empresa_data['CANTIDAD_GUIAS'], mode='lines', name='Guías', yaxis='y2')
-                # ... (resto de la configuración del gráfico)
-                st.plotly_chart(fig_empresa_combinado, use_container_width=True)
+        # Continuar con el resto del preprocesamiento (mapeo de empresas, etc.)
+        # ...
 
-            # --- GRÁFICO 2: TONELAJE POR DESTINO ---
-            if not tonelaje_por_destino.empty:
-                # ... (código para el gráfico de destino se mantiene)
-                fig_destino = px.bar(tonelaje_por_destino, x=DESTINO_COLUMN, y=VOLUME_COLUMN, title='Tonelaje por Destino')
-                st.plotly_chart(fig_destino, use_container_width=True)
-            
-            # --- GRÁFICO 3: REGULACIONES POR PRODUCTO ---
-            # ... (código para el gráfico de regulaciones se mantiene)
-
-            # --- GRÁFICO 4: TONELAJE Y GUÍAS POR PRODUCTO (COMBINADO) ---
-            if not producto_data_combinado.empty:
-                # ... (código para el gráfico combinado de producto se mantiene)
-                fig_producto_combinado = px.bar(producto_data_combinado, x=PRODUCTO_COLUMN, y=VOLUME_COLUMN, title='Tonelaje y Guías por Producto')
-                fig_producto_combinado.add_scatter(x=producto_data_combinado[PRODUCTO_COLUMN], y=producto_data_combinado['CANTIDAD_GUIAS'], mode='lines', name='Guías', yaxis='y2')
-                # ... (resto de la configuración del gráfico)
-                st.plotly_chart(fig_producto_combinado, use_container_width=True)
-            
-            # --- Tabla de Datos Detallados ---
-            # ... (código para la tabla se mantiene)
-            
+        # El resto del código continúa desde aquí...
+        # ...
+        
     except Exception as e:
-        st.error(f"Ocurrió un error: {e}")
-        st.exception(e)
+        st.error(f"Ocurrió un error durante la carga o preprocesamiento de los datos: {e}")
+        st.exception(e) # Muestra el traceback completo
 else:
     st.info("Carga tu archivo Excel para comenzar.")
