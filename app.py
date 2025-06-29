@@ -16,9 +16,8 @@ st.markdown("### Análisis Detallado de Operaciones")
 
 # --- Configuración de Nombres de Columnas (¡AJUSTA ESTAS SI TUS NOMBRES SON DIFERENTES!) ---
 VOLUME_COLUMN = 'TONELAJE'           # Columna que contiene el volumen/tonelaje.
-# *** COLUMNA DE EMPRESA: Se intentará detectar automáticamente entre las opciones comunes. ***
-# *** Si tu columna tiene un nombre diferente, ajústalo aquí. ***
-POSIBLES_EMPRESA_COLUMNAS = ['EMPRESA DE TRANSPORTE', 'L', 'PATENTE'] # Lista de nombres posibles para la columna de empresa.
+# !!! IMPORTANTE: Confirmado que la columna para las empresas es 'EMPRESA DE TRANSPORTE'.
+EMPRESA_COLUMN = 'EMPRESA DE TRANSPORTE' 
 FECHA_COLUMN = 'FECHA'              # Columna que contiene las fechas.
 PRODUCTO_COLUMN = 'PRODUCTO'        # Columna que contiene los nombres de los productos.
 DESTINO_COLUMN = 'DESTINO'          # Columna que contiene los destinos.
@@ -90,22 +89,13 @@ if uploaded_file is not None:
             st.error(f"Error: No se encontró la columna '{PRODUCTO_COLUMN}'.")
             st.stop()
         
-        # --- Detección de la Columna de Empresa ---
-        found_empresa_column = None
-        for col_name in POSIBLES_EMPRESA_COLUMNAS:
-            if col_name in df.columns:
-                found_empresa_column = col_name
-                break # Si se encuentra, salimos del bucle
-
-        if found_empresa_column is None:
-            st.error(f"Error: No se encontró ninguna de las columnas esperadas para las empresas: {POSIBLES_EMPRESA_COLUMNAS}. Por favor, verifica los nombres de las columnas en tu archivo Excel y ajústalos en la variable `POSIBLES_EMPRESA_COLUMNAS`.")
+        # Validar Columna de Empresa - ¡CONFIRMADO COMO 'EMPRESA DE TRANSPORTE'!
+        if EMPRESA_COLUMN not in df.columns:
+            st.error(f"Error: No se encontró la columna '{EMPRESA_COLUMN}'. Por favor, verifica que la columna para las empresas se llame exactamente '{EMPRESA_COLUMN}'.")
             st.stop()
-        else:
-            # Asignar la columna detectada a EMPRESA_COLUMN
-            EMPRESA_COLUMN = found_empresa_column
-            st.sidebar.write(f"Columna de empresa detectada: **`{EMPRESA_COLUMN}`**")
-            # Aplicar el mapeo de nombres de empresas
-            df[EMPRESA_COLUMN] = df[EMPRESA_COLUMN].map(empresa_mapping).fillna(df[EMPRESA_COLUMN])
+
+        # Aplicar el mapeo de nombres de empresas
+        df[EMPRESA_COLUMN] = df[EMPRESA_COLUMN].map(empresa_mapping).fillna(df[EMPRESA_COLUMN])
 
 
         # 4. Validar columnas de regulación
