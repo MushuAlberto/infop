@@ -88,7 +88,6 @@ if uploaded_file is not None:
             st.error(f"Error: No se encontró la columna '{PRODUCTO_COLUMN}'.")
             st.stop()
         
-        # Validar Columna de Empresa - Confirmada como 'EMPRESA DE TRANSPORTE'
         if EMPRESA_COLUMN not in df.columns:
             st.error(f"Error: No se encontró la columna '{EMPRESA_COLUMN}'. Por favor, verifica que la columna para las empresas se llame exactamente '{EMPRESA_COLUMN}'.")
             st.stop()
@@ -136,8 +135,17 @@ if uploaded_file is not None:
 
             # --- Agrupación de Datos para Gráficos y Insights ---
 
+            # Inicializar DataFrames vacíos para evitar NameError si no hay datos
+            tonelaje_por_empresa = pd.DataFrame()
+            guias_por_empresa = pd.DataFrame()
+            empresa_data = pd.DataFrame()
+            
+            tonelaje_por_destino = pd.DataFrame()
+            guias_por_producto = pd.DataFrame()
+            tonelaje_por_producto_detail = pd.DataFrame()
+            regulaciones_por_producto = pd.DataFrame()
+
             # 1. Datos para Gráfico Combinado por Empresa (Tonelaje y Guías)
-            empresa_data = pd.DataFrame() # Inicializar vacío
             if EMPRESA_COLUMN in df_filtrado_fecha.columns:
                 # Tonelaje por Empresa
                 tonelaje_por_empresa = df_filtrado_fecha.groupby(EMPRESA_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
@@ -161,7 +169,6 @@ if uploaded_file is not None:
             
 
             # 2. Gráfico por Destino del Producto (solo barras de tonelaje)
-            tonelaje_por_destino = pd.DataFrame() # Inicializar
             if DESTINO_COLUMN in df_filtrado_fecha.columns:
                 tonelaje_por_destino = df_filtrado_fecha.groupby(DESTINO_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
                 if not tonelaje_por_destino.empty:
@@ -177,19 +184,24 @@ if uploaded_file is not None:
                 st.warning(f"No se encontró la columna '{DESTINO_COLUMN}'. El gráfico por destino no se mostrará.")
 
             # 3. Gráfico por Cantidad de Guías Emitidas por Producto
-            guias_por_producto = pd.DataFrame() # Inicializar
+            # Calculamos guías_por_producto aquí para evitar el NameError
+            if GUIA_COLUMN_IDENTIFIER and GUIA_COLUMN_IDENTIFIER in df_filtrado_fecha.columns:
+                guias_por_producto = df_filtrado_fecha.groupby(PRODUCTO_COLUMN)[GUIA_COLUMN_IDENTIFIER].nunique().reset_index(name='CANTIDAD_GUIAS')
+            else: # Contar filas si no hay columna específica para guías
+                guias_por_producto = df_filtrado_fecha.groupby(PRODUCTO_COLUMN).size().reset_index(name='CANTIDAD_GUIAS')
+
             if not guias_por_producto.empty:
-                fig_guias = px.bar(guias_por_producto,
+                fig_guias_producto = px.bar(guias_por_producto,
                                    x=PRODUCTO_COLUMN, y='CANTIDAD_GUIAS',
                                    title=f'Cantidad de Guías por Producto - {fecha_dt_seleccionada.strftime("%d-%m-%Y")}',
                                    labels={PRODUCTO_COLUMN: 'Producto', 'CANTIDAD_GUIAS': 'Nro. de Guías'},
                                    color_discrete_sequence=px.colors.qualitative.G10)
-                st.plotly_chart(fig_guias, use_container_width=True)
+                st.plotly_chart(fig_guias_producto, use_container_width=True)
             else:
                 st.warning("No hay datos de guías por producto para mostrar el gráfico.")
 
             # 4. Gráfico por Tonelaje de Cada Producto
-            tonelaje_por_producto_detail = pd.DataFrame() # Inicializar
+            tonelaje_por_producto_detail = df_filtrado_fecha.groupby(PRODUCTO_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
             if not tonelaje_por_producto_detail.empty:
                 fig_producto_tonelaje = px.bar(tonelaje_por_producto_detail,
                                                 x=PRODUCTO_COLUMN, y=VOLUME_COLUMN,
