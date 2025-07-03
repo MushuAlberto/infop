@@ -71,7 +71,7 @@ def render_analisis_diario(df_original):
     
     st.subheader("📈 Visualizaciones Analíticas")
     
-    # Gráfico y Análisis por Empresa
+    # --- Gráfico y Análisis por Empresa ---
     empresa_data = pd.DataFrame()
     if EMPRESA_COLUMN in df_filtrado_op:
         tonelaje_por_empresa = df_filtrado_op.groupby(EMPRESA_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
@@ -85,7 +85,12 @@ def render_analisis_diario(df_original):
         fig_emp.update_layout(title_text='Análisis de Rendimiento por Transportista', yaxis=dict(title='Tonelaje'), yaxis2=dict(title='Cantidad de Guías', overlaying='y', side='right', showgrid=False), legend=dict(y=1.1, x=1))
         st.plotly_chart(fig_emp, use_container_width=True)
 
-    # Gráfico y Análisis por Producto
+        with st.expander("Ver Análisis Ejecutivo por Transportista"):
+            empresa_top1 = empresa_data.iloc[0]
+            eficiencia = empresa_top1[VOLUME_COLUMN] / empresa_top1['CANTIDAD_GUIAS'] if empresa_top1['CANTIDAD_GUIAS'] > 0 else 0
+            st.markdown(f"**Líder en Volumen:** **{empresa_top1[EMPRESA_COLUMN]}** dominó la operación con **{empresa_top1[VOLUME_COLUMN]:,.2f} Toneladas**. **Eficiencia Operativa:** Promedió **{eficiencia:.2f} toneladas por guía**.")
+            
+    # --- Gráfico y Análisis por Producto ---
     producto_data = pd.DataFrame()
     if PRODUCTO_COLUMN in df_filtrado_op:
         tonelaje_por_producto = df_filtrado_op.groupby(PRODUCTO_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
@@ -99,14 +104,24 @@ def render_analisis_diario(df_original):
         fig_prod.update_layout(title_text='Análisis de Rendimiento por Producto', yaxis=dict(title='Tonelaje'), yaxis2=dict(title='Cantidad de Guías', overlaying='y', side='right', showgrid=False), legend=dict(y=1.1, x=1))
         st.plotly_chart(fig_prod, use_container_width=True)
 
-    # Gráfico por Destino
+        with st.expander("Ver Análisis Ejecutivo por Producto"):
+            producto_top1 = producto_data.iloc[0]
+            porcentaje_top1_prod = (producto_top1[VOLUME_COLUMN] / tonelaje_total) * 100 if tonelaje_total > 0 else 0
+            st.markdown(f"**Producto Estrella:** **{producto_top1[PRODUCTO_COLUMN]}** fue el producto con mayor movimiento, representando el **{porcentaje_top1_prod:.1f}%** del tonelaje total del día.")
+
+    # --- Gráfico por Destino ---
     tonelaje_por_destino = df_filtrado_op.groupby(DESTINO_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False).reset_index()
     if not tonelaje_por_destino.empty:
         fig_dest = px.bar(tonelaje_por_destino, x=DESTINO_COLUMN, y=VOLUME_COLUMN, title='Distribución de Tonelaje por Destino')
         st.plotly_chart(fig_dest, use_container_width=True)
+
+        with st.expander("Ver Análisis Ejecutivo por Destino"):
+            destino_top1 = tonelaje_por_destino.iloc[0]
+            porcentaje_top1_dest = (destino_top1[VOLUME_COLUMN] / tonelaje_total) * 100 if tonelaje_total > 0 else 0
+            st.markdown(f"**Principal Mercado:** El destino **{destino_top1[DESTINO_COLUMN]}** recibió el **{porcentaje_top1_dest:.1f}%** del volumen total, consolidándose como el mercado clave del día.")
             
 # ==============================================================================
-#                      FUNCIÓN PARA PESTAÑA 2: ANÁLISIS COMPARATIVO
+#                      PESTAÑA 2: ANÁLISIS COMPARATIVO
 # ==============================================================================
 def render_analisis_comparativo(df_original):
     st.header("Análisis Comparativo por Rango de Fechas")
@@ -134,29 +149,24 @@ def render_analisis_comparativo(df_original):
 
     st.subheader("📊 Comparación de KPIs Generales")
     
-    # Calcular KPIs para cada período
     kpi1_total = periodo1_df[VOLUME_COLUMN].sum() if not periodo1_df.empty else 0
-    kpi1_guides = len(periodo1_df) if not periodo1_df.empty else 0
     kpi2_total = periodo2_df[VOLUME_COLUMN].sum() if not periodo2_df.empty else 0
-    
-    # Calcular deltas (diferencias)
     delta_total = kpi1_total - kpi2_total
-    delta_total_percent = ((delta_total / kpi2_total) * 100) if kpi2_total > 0 else 0
+    delta_total_percent = ((delta_total / kpi2_total) * 100) if kpi2_total > 0 else float('inf')
     
     col1, _ = st.columns(2)
-    col1.metric("Tonelaje Total (Período 1 vs 2)", f"{kpi1_total:,.2f} Ton", f"{delta_total:,.2f} ({delta_total_percent:.1f}%)")
-
-    st.subheader("📊 Comparación de Rendimiento por Empresa")
+    col1.metric("Variación de Tonelaje (Período 1 vs 2)", f"{kpi1_total:,.2f} Ton", f"{delta_total:,.2f} ({delta_total_percent:.1f}%)")
+    
+    st.subheader("📊 Comparación Visual por Empresa")
     
     col_p1, col_p2 = st.columns(2)
     with col_p1:
-        st.markdown(f"**Período 1: {fecha_inicio_1.strftime('%d/%m/%Y')} - {fecha_fin_1.strftime('%d/%m/%Y')}**")
+        st.markdown(f"**Período 1:**")
         if not periodo1_df.empty:
             data_empresa1 = periodo1_df.groupby(EMPRESA_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False)
             st.bar_chart(data_empresa1)
-    
     with col_p2:
-        st.markdown(f"**Período 2: {fecha_inicio_2.strftime('%d/%m/%Y')} - {fecha_fin_2.strftime('%d/%m/%Y')}**")
+        st.markdown(f"**Período 2:**")
         if not periodo2_df.empty:
             data_empresa2 = periodo2_df.groupby(EMPRESA_COLUMN)[VOLUME_COLUMN].sum().sort_values(ascending=False)
             st.bar_chart(data_empresa2)
@@ -173,9 +183,8 @@ if uploaded_file:
     try:
         df_maestro = pd.read_excel(uploaded_file, engine='openpyxl')
         
-        # Validar columnas globales esenciales
-        columnas_globales = [FECHA_COLUMN, VOLUME_COLUMN, PRODUCTO_COLUMN, EMPRESA_COLUMN, DESTINO_COLUMN]
-        missing_cols = [col for col in columnas_globales if col not in df_maestro.columns]
+        required_cols = [FECHA_COLUMN, VOLUME_COLUMN, PRODUCTO_COLUMN, EMPRESA_COLUMN, DESTINO_COLUMN]
+        missing_cols = [col for col in required_cols if col not in df_maestro.columns]
         if missing_cols:
             st.error(f"Faltan columnas esenciales: {', '.join(missing_cols)}. Verifica el archivo.")
             st.stop()
@@ -184,8 +193,8 @@ if uploaded_file:
         df_maestro = df_maestro.dropna(subset=[FECHA_COLUMN])
         df_maestro[VOLUME_COLUMN] = pd.to_numeric(df_maestro[VOLUME_COLUMN], errors='coerce').fillna(0)
         df_maestro[EMPRESA_COLUMN] = df_maestro[EMPRESA_COLUMN].apply(normalizar_nombre_empresa)
-        
-        st.sidebar.success("Archivo cargado y procesado exitosamente!")
+
+        st.sidebar.success("Archivo cargado y procesado!")
         
         tab1, tab2 = st.tabs(["📊 Análisis Diario", "📈 Análisis Comparativo"])
 
@@ -195,7 +204,7 @@ if uploaded_file:
             render_analisis_comparativo(df_maestro.copy())
             
     except Exception as e:
-        st.error(f"Ocurrió un error al procesar el archivo: {e}")
+        st.error(f"Error al procesar el archivo: {e}")
         st.exception(e)
 else:
     st.info("📌 Por favor, carga un archivo Excel para comenzar el análisis.")
